@@ -50,8 +50,7 @@ func TestSnakeCaseFindsTheColumnsOfAStruct(t *testing.T) {
 		*Timestamps
 		owner
 		//lint:ignore U1000 SnakeCase must skip an unexported field.
-		secret   string
-		Relation *Row `pii:"-"`
+		secret string
 	}
 
 	fields, err := umbra.SnakeCase(reflect.TypeFor[Row]())
@@ -179,6 +178,35 @@ func TestCatalogAsksTheMapperForAModelsColumns(t *testing.T) {
 
 	if _, err := failing.Catalog(); err == nil || !strings.HasSuffix(err.Error(), "(Contact): no schema") {
 		t.Errorf("got %v", err)
+	}
+}
+
+func TestCatalogSkipsAFieldTaggedDashWhateverTheMapper(t *testing.T) {
+	type Campaign struct {
+		ID     string `pii:"allow"`
+		Status string `pii:"-"` // computed by a query, not stored
+	}
+
+	everyField := func(model reflect.Type) ([]umbra.Field, error) {
+		var fields []umbra.Field
+		for _, field := range reflect.VisibleFields(model) {
+			fields = append(fields, umbra.Field{Column: strings.ToLower(field.Name), Struct: field})
+		}
+
+		return fields, nil
+	}
+
+	registry := umbra.NewRegistry(policy(), everyField)
+	umbra.Model[Campaign](registry.Dataset("postgres"), "campaigns")
+
+	catalog, err := registry.Catalog()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	campaigns, _ := catalog.Table("postgres", "campaigns")
+	if want := []umbra.Column{{Name: "id", Class: umbra.Allow{}}}; !reflect.DeepEqual(campaigns.Columns, want) {
+		t.Errorf("got %v, want %v", campaigns.Columns, want)
 	}
 }
 
