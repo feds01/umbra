@@ -210,6 +210,48 @@ func TestCatalogSkipsAFieldTaggedDashWhateverTheMapper(t *testing.T) {
 	}
 }
 
+func TestATagGivenInCodeClassifiesAFieldWithNoTag(t *testing.T) {
+	type Model struct { // an ORM's base type, whose fields can't be tagged
+		ID        string
+		CreatedAt string `pii:"allow"`
+	}
+
+	type Connection struct {
+		Model
+		Token string `pii:"deny=credential"`
+	}
+
+	registry := umbra.NewRegistry(policy(), nil)
+	umbra.Model[Connection](registry.Dataset("postgres"), "connections",
+		umbra.Tag("id", "allow"),
+		umbra.Tag("legacy_state", "deny=internal"),
+	)
+
+	catalog, err := registry.Catalog()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	connections, _ := catalog.Table("postgres", "connections")
+
+	want := []umbra.Column{
+		{Name: "id", Class: umbra.Allow{}},
+		{Name: "created_at", Class: umbra.Allow{}},
+		{Name: "token", Class: umbra.Deny{Reason: "credential"}},
+		{Name: "legacy_state", Class: umbra.Deny{Reason: "internal"}},
+	}
+	if !reflect.DeepEqual(connections.Columns, want) {
+		t.Errorf("got %v, want %v", connections.Columns, want)
+	}
+
+	twice := umbra.NewRegistry(policy(), nil)
+	umbra.Model[Connection](twice.Dataset("postgres"), "connections", umbra.Tag("id", "allow"), umbra.Tag("token", "allow"))
+
+	if _, err := twice.Catalog(); err == nil || err.Error() != "postgres connections.token: classified twice" {
+		t.Errorf("got %v for a tag beside a tagged field", err)
+	}
+}
+
 func TestCatalogRefusesAnUnusablePolicy(t *testing.T) {
 	text := umbra.Masker{Term: "hash", Suffix: "hash", Kinds: umbra.Text}
 	reasons := []umbra.Reason{"person"}
