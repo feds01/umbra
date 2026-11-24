@@ -1,0 +1,223 @@
+package umbra_test
+
+import (
+	"fmt"
+	"log"
+	"testing/fstest"
+
+	"github.com/feds01/umbra"
+)
+
+func Example() {
+	type Contact struct {
+		ID    string `pii:"allow"`
+		OrgID string `pii:"allow"`
+		Name  string `pii:"deny=person"`
+		Email string `pii:"generalise=domain"`
+	}
+
+	pii := umbra.Policy{
+		Reasons: []umbra.Reason{"person", "credential"},
+		Maskers: []umbra.Masker{{Term: "generalise=domain", Suffix: "domain", Kinds: umbra.Text}},
+	}
+
+	registry := umbra.NewRegistry(pii, umbra.SnakeCase)
+	umbra.Model[Contact](registry.Dataset("postgres"), "contacts")
+
+	catalog, err := registry.Catalog()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	contacts, _ := catalog.Table("postgres", "contacts")
+
+	for _, column := range contacts.Exposures(nil) {
+		fmt.Println(column.Name, column.Label)
+	}
+
+	// Output:
+	// id pii:allow
+	// org_id pii:allow
+	// email_domain pii:generalise=domain
+}
+
+func ExampleClass() {
+	for _, tag := range []string{"allow", "deny=person", "generalise=domain,pseudonymise"} {
+		class, err := umbra.ParseTag(tag, policy())
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		switch class := class.(type) {
+		case umbra.Allow:
+			fmt.Println(class, "shows the value")
+		case umbra.Deny:
+			fmt.Println(class, "hides the value of a", class.Reason)
+		case umbra.Mask:
+			fmt.Println(class, "shows", len(class.Maskers), "values derived from it")
+		}
+	}
+
+	// Output:
+	// allow shows the value
+	// deny=person hides the value of a person
+	// generalise=domain,pseudonymise shows 2 values derived from it
+}
+
+func ExampleModel() {
+	type Base struct {
+		ID        string `pii:"allow"`
+		CreatedAt string `pii:"allow"`
+	}
+
+	type Account struct {
+		Name string
+	}
+
+	type Contact struct {
+		Base
+		OrgID   string   `pii:"allow"`
+		Email   string   `pii:"generalise=domain,pseudonymise"`
+		Account *Account `pii:"-"` // a relation, not a column
+	}
+
+	registry := umbra.NewRegistry(policy(), umbra.SnakeCase)
+	umbra.Model[Contact](registry.Dataset("postgres"), "contacts",
+		umbra.Tag("legacy_source", "deny=internal"), // a column no field stores
+	)
+
+	catalog, err := registry.Catalog()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	contacts, _ := catalog.Table("postgres", "contacts")
+
+	for _, column := range contacts.Columns {
+		fmt.Println(column.Name, column.Class)
+	}
+
+	// Output:
+	// id allow
+	// created_at allow
+	// org_id allow
+	// email generalise=domain,pseudonymise
+	// legacy_source deny=internal
+}
+
+func ExampleDataset_Columns() {
+	registry := umbra.NewRegistry(policy(), nil)
+
+	registry.Dataset("postgres").Columns("schema_migrations", // the migration tool owns this table
+		umbra.Tag("version", "allow"),
+		umbra.Tag("applied_at", "allow"),
+		umbra.Tag("applied_by", "deny=person"),
+	)
+
+	catalog, err := registry.Catalog()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	migrations, _ := catalog.Table("postgres", "schema_migrations")
+	fmt.Println(migrations)
+
+	// Output:
+	// {schema_migrations [{version allow} {applied_at allow} {applied_by deny=person}]}
+}
+
+func ExampleRegistry_Catalog_problems() {
+	type Contact struct {
+		Email string `pii:"generalise=domian"`
+		Notes string `pii:"deny"`
+		Phone string
+	}
+
+	type User struct {
+		IP   string `pii:"pseudonymise"`
+		Plan string `pii:"allow=business_data"`
+	}
+
+	registry := umbra.NewRegistry(policy(), umbra.SnakeCase)
+	postgres := registry.Dataset("postgres")
+	umbra.Model[Contact](postgres, "contacts")
+	umbra.Model[User](postgres, "users")
+
+	_, err := registry.Catalog()
+	fmt.Println(err)
+
+	// Output:
+	// postgres contacts.email (Contact.Email): unknown term "generalise=domian"; use allow, deny=<reason>, generalise=domain, generalise=host or pseudonymise
+	// postgres contacts.notes (Contact.Notes): deny needs a reason: credential, person, free_text, json or internal
+	// postgres contacts.phone (Contact.Phone): a column with no pii tag
+	// postgres users.ip: pseudonymise reads org_id, which the table must allow
+	// postgres users: plan: allow=business_data is only for accounts
+}
+
+func ExampleTable_Exposures() {
+	catalog, err := umbra.Load(fstest.MapFS{
+		"postgres/contacts.pii": {Data: []byte("id allow\norg_id allow\nname deny=person\nemail generalise=domain,pseudonymise\n")},
+	}, policy())
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	contacts, _ := catalog.Table("postgres", "contacts")
+
+	// A target with no keyed hash, as BigQuery has none, can't pseudonymise.
+	canCompute := func(term string) bool { return term != "pseudonymise" }
+
+	for _, exposure := range contacts.Exposures(canCompute) {
+		fmt.Printf("%-12s from %-6s %s\n", exposure.Name, exposure.Column, exposure.Label)
+	}
+
+	// Output:
+	// id           from id     pii:allow
+	// org_id       from org_id pii:allow
+	// email_domain from email  pii:generalise=domain
+}
+
+func ExampleLoad() {
+	// In a program, the files are usually embedded: //go:embed catalog
+	files := fstest.MapFS{
+		"postgres/contacts.pii": {Data: []byte("# Code generated by umbra. DO NOT EDIT.\nid allow\nname deny=person\n")},
+		"postgres/accounts.pii": {Data: []byte("# Code generated by umbra. DO NOT EDIT.\nid allow\nprofile allow=business_data\n")},
+	}
+
+	catalog, err := umbra.Load(files, policy())
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	for table := range catalog.Tables("postgres") {
+		fmt.Println(table.Name, table.Columns)
+	}
+
+	// Output:
+	// accounts [{id allow} {profile allow=business_data}]
+	// contacts [{id allow} {name deny=person}]
+}
+
+func ExampleCatalog_Verify() {
+	registry := umbra.NewRegistry(policy(), nil)
+	postgres := registry.Dataset("postgres")
+	postgres.Columns("contacts", umbra.Tag("id", "allow"), umbra.Tag("name", "deny=person"))
+	postgres.Columns("users", umbra.Tag("id", "allow"))
+
+	catalog, err := registry.Catalog()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	committed := fstest.MapFS{
+		"postgres/accounts.pii": {Data: []byte("# Code generated by umbra. DO NOT EDIT.\nid allow\n")},
+		"postgres/contacts.pii": {Data: []byte("# Code generated by umbra. DO NOT EDIT.\nid allow\n")},
+	}
+
+	fmt.Println(catalog.Verify(committed))
+
+	// Output:
+	// postgres/accounts.pii is not in the catalog
+	// postgres/contacts.pii differs
+	// postgres/users.pii is missing
+}
