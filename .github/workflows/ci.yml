@@ -4,6 +4,8 @@ on:
   push:
     branches: [main]
   pull_request:
+  # A release runs it first.
+  workflow_call:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -139,3 +141,31 @@ jobs:
         with:
           work-dir: cmd/umbra
           cache-dependency-path: cmd/umbra/go.sum
+
+  # What a release builds, so that a tag fails on nothing: every archive
+  # cross-builds, the one for this runner runs, and the formula is valid.
+  release-build:
+    name: Release build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v7
+      - name: Install Go
+        uses: actions/setup-go@v7
+        with:
+          go-version: stable
+      - name: Install just
+        uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4
+      - name: Build the archives
+        run: just dist 0.0.0-dev
+      - name: Run the command from its archive
+        run: |
+          tar -xzf dist/umbra-0.0.0-dev-linux-amd64.tar.gz
+          umbra-0.0.0-dev-linux-amd64/umbra version | grep --fixed-strings "umbra 0.0.0-dev"
+      - name: Check the formula's style
+        run: |
+          eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+          brew tap-new --no-git local/umbra
+          mkdir -p "$(brew --repository local/umbra)/Formula"
+          just formula 0.0.0-dev dist/checksums.txt > "$(brew --repository local/umbra)/Formula/umbra.rb"
+          brew style local/umbra
