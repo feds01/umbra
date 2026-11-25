@@ -1,0 +1,100 @@
+# Publish a release when a version is tagged: the archives for macOS and Linux
+# on GitHub, with the changelog's section as the notes and an attestation of
+# each archive, and the Homebrew formula in feds01/homebrew-tap. A pre-release
+# is published without the formula.
+name: Release
+
+on:
+  push:
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+*"
+
+permissions: {}
+
+jobs:
+  # What was tagged must pass what every pull request does.
+  ci:
+    name: CI
+    uses: ./.github/workflows/ci.yml
+    permissions:
+      contents: read
+
+  release:
+    name: Release
+    needs: ci
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write # to sign the attestations
+      attestations: write
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Install Go
+        uses: actions/setup-go@v7
+        with:
+          go-version: stable
+      - name: Install just
+        uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4
+      - name: Write the release notes
+        run: just notes "${GITHUB_REF_NAME#v}" > notes.md
+      - name: Build the archives
+        run: just dist "${GITHUB_REF_NAME#v}"
+      - name: Attest the archives
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-checksums: dist/checksums.txt
+      - name: Create the GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" dist/* \
+            --verify-tag \
+            --title "$GITHUB_REF_NAME" \
+            --notes-file notes.md \
+            ${{ contains(github.ref_name, '-') && '--prerelease' || '' }}
+      # The proxy learns of the version from its first request, which pkg.go.dev
+      # shows within minutes. A refusal doesn't fail the release.
+      - name: Have the Go module proxy fetch the version
+        continue-on-error: true
+        run: curl --fail --silent --show-error "https://proxy.golang.org/github.com/feds01/umbra/@v/${GITHUB_REF_NAME}.info"
+
+  homebrew:
+    name: Publish the Homebrew formula
+    needs: release
+    if: ${{ !contains(github.ref_name, '-') }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      # This repository, for its justfile.
+      - name: Checkout source code
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+          path: umbra
+      # The tap, which the formula is pushed to. It is public, and the token that
+      # can push to it is kept out of the checkout.
+      - name: Checkout the tap
+        uses: actions/checkout@v7
+        with:
+          repository: feds01/homebrew-tap
+          persist-credentials: false
+          path: tap
+      # Pinned, as it isn't GitHub's own.
+      - name: Install just
+        uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4
+      - name: Write the formula
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          gh release download "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --pattern checksums.txt
+          just --justfile umbra/justfile formula "$version" checksums.txt > tap/Formula/umbra.rb
+      # The token is in this step alone.
+      - name: Commit and push the formula
+        env:
+          TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+        run: just --justfile umbra/justfile publish-formula tap "${GITHUB_REF_NAME#v}"
