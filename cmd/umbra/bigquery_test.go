@@ -58,6 +58,22 @@ func TestViewsBigQueryPrintsNothingUnlessItRendersEveryTable(t *testing.T) {
 	}
 }
 
+func TestAnEmptySchemaIsAnErrorNotAViewToDrop(t *testing.T) {
+	config := warehouse(t, "[]", map[string]string{})
+
+	code, stdout, stderr := execute(t, "views", "bigquery", "--config", config)
+
+	if code != 2 || stdout != "" || !strings.Contains(stderr, "no fields") {
+		t.Errorf("views: got exit code %d, %q and %q, want 2, nothing and the empty schema", code, stdout, stderr)
+	}
+
+	code, _, stderr = execute(t, "check", "--config", config)
+
+	if code != 2 || !strings.Contains(stderr, "no fields") {
+		t.Errorf("check: got exit code %d and %q, want 2 and the empty schema", code, stderr)
+	}
+}
+
 func TestACatalogTableThatIsntInTheDatasetIsAProblem(t *testing.T) {
 	code, stdout, stderr := execute(t, "views", "bigquery", "--config", exampleConfig, "missing")
 

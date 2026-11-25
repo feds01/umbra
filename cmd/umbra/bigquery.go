@@ -66,6 +66,11 @@ func (c bigqueryConfig) readSchema(cfg *config, table string) ([]bq.Field, error
 		return nil, fmt.Errorf("%s: %w", file, err)
 	}
 
+	// A table with no fields would render as a view to drop.
+	if len(fields) == 0 {
+		return nil, fmt.Errorf("%s: no fields, was it written with bq show --schema?", file)
+	}
+
 	return fields, nil
 }
 
