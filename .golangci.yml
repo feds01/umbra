@@ -1,0 +1,43 @@
+version: "2"
+
+linters:
+  default: standard # errcheck, govet, ineffassign, staticcheck, unused
+  enable:
+    - errorlint # errors.Is and errors.As, and %w, as Check's errors rely on
+    - gocritic
+    - godot # doc comments are sentences
+    - intrange
+    - misspell # British spelling
+    - nolintlint
+    - revive # every exported name is documented
+    - rowserrcheck
+    - sqlclosecheck
+    - testableexamples # an example checks its output, as examples are the docs
+    - thelper
+    - unparam
+    - usestdlibvars
+    - whitespace
+  settings:
+    errcheck:
+      exclude-functions:
+        - (*database/sql.Rows).Close # rows.Err reports what Close would
+    misspell:
+      locale: UK
+      ignore-rules:
+        - materialized # PostgreSQL's own word, as in CREATE MATERIALIZED VIEW
+  exclusions:
+    rules:
+      - path: _test\.go
+        linters:
+          - errcheck # a test's cleanup has nowhere to report a failed Close or Rollback
+
+formatters:
+  enable:
+    - gofumpt
+    - gci
+  settings:
+    gci:
+      sections:
+        - standard
+        - default
+        - localmodule

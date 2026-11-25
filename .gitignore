@@ -1,0 +1,18 @@
+# Built binaries and release archives
+/.bin/
+/dist/
+
+# A workspace for local work on the modules together
+/go.work
+/go.work.sum
+
+# Editors
+.vscode/
+.idea/
+
+# Local worktrees and agent scratch space
+/.worktrees/
+/.claude/worktrees/
+
+# The built user guide
+/docs/book/book/

@@ -1,0 +1,7 @@
+# Golden files hold the exact output of a test, so a Windows checkout mustn't
+# turn their line endings into CRLF.
+* text=auto eol=lf
+
+# Test data, which GitHub collapses in the diffs of pull requests and leaves out
+# of the repository's languages: the golden files that tests compare with.
+**/testdata/** linguist-generated
