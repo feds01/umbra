@@ -1,0 +1,36 @@
+# A policy like the one in the README, and the views of two datasets.
+
+catalog = "catalog"
+
+[policy]
+reasons = ["person", "credential"]
+bases = ["business_data"]
+
+[[policy.maskers]]
+term = "generalise=domain"
+suffix = "domain"
+kinds = ["text"]
+reason = "person"
+
+[[policy.maskers]]
+term = "pseudonymise"
+suffix = "pseudonym"
+kinds = ["text"]
+reason = "person"
+reads = ["org_id"]
+
+[[policy.maskers]]
+term = "generalise=host"
+suffix = "host"
+kinds = ["text"]
+reason = "person"
+
+[postgres]
+dataset = "postgres"
+tables = "public"
+views = "masked"
+role = "analyst"
+classification = "classification"
+masks."generalise=domain" = { extract = "email" }
+masks."generalise=host" = { extract = "url" }
+masks.pseudonymise = { hmac = { scope = "org_id", key = "SELECT key FROM private.pseudonym_key" } }

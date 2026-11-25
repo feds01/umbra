@@ -1,7 +1,8 @@
 // Command umbra checks a catalog of classified columns against the databases it describes,
 // and renders the masked views that hide what the catalog denies, without writing any Go.
 //
-// Run umbra help for the commands.
+// Run umbra help for the commands. They read umbra.toml, which holds the policy that the
+// catalog's tags are written in and the views to render.
 //
 // It exits 0 when it found nothing wrong, 1 when the catalog has problems, and 2 when
 // it couldn't run: a bad command line or umbra.toml, a database it couldn't reach, or
@@ -23,7 +24,11 @@ var version = "dev"
 
 const usage = `usage: umbra <command> [flags]
 
+  views postgres   print the SQL of the masked PostgreSQL views
   version          print the version
+
+Every command that reads a catalog reads the nearest umbra.toml, or the one named with
+--config.
 `
 
 // problem is something wrong with the catalog, as opposed to a command that couldn't run.
@@ -74,7 +79,9 @@ func dispatch(args []string, stdout, stderr io.Writer) error {
 		return errUsage
 	}
 
-	switch command := args[0]; command {
+	switch command, rest := args[0], args[1:]; command {
+	case "views":
+		return views(rest, stdout, stderr)
 	case "version":
 		fmt.Fprintln(stdout, describe(version, buildInfo()))
 

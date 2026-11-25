@@ -1,0 +1,4 @@
+github.com/BurntSushi/toml v1.6.0 h1:dRaEfpa2VI55EwlIW72hMRHdWouJeRF7TPYhI+AUQjk=
+github.com/BurntSushi/toml v1.6.0/go.mod h1:ukJfTF/6rtPPRCnwkur4qwRxa8vTRFBF0uk2lLoLwho=
+github.com/feds01/umbra v0.0.0-20261125121540-42455df4db19 h1:UbAxjmARvSF41EfDUDsCPa/0FoocE9s1+2FiimkLf9Y=
+github.com/feds01/umbra v0.0.0-20261125121540-42455df4db19/go.mod h1:d3rXDcro7TdWmx/x5MDlQKViQiij7SQskUjxLm5TmyA=
