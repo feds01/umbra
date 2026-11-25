@@ -99,3 +99,26 @@ func ExampleFlatten() {
 	// bigquery page_views.page.referrer: not classified
 	// bigquery page_views.page.title: not in the schema
 }
+
+func ExampleParseSchema() {
+	// The output of: bq show --schema --format=prettyjson acme:events.page_views
+	fields, err := bigquery.ParseSchema([]byte(`[
+		{"name": "id", "type": "STRING", "mode": "NULLABLE"},
+		{"name": "tags", "type": "STRING", "mode": "REPEATED"},
+		{"name": "page", "type": "RECORD", "mode": "NULLABLE", "fields": [
+			{"name": "url", "type": "STRING", "mode": "NULLABLE"}
+		]}
+	]`))
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	for _, field := range fields {
+		fmt.Println(field.Name, field.Type, field.Repeated, len(field.Fields))
+	}
+
+	// Output:
+	// id STRING false 0
+	// tags STRING true 0
+	// page RECORD false 1
+}
