@@ -73,7 +73,8 @@ func (r *Registry) Dataset(name string) *Dataset {
 }
 
 // Model registers the table T is stored in, classified by the pii tags on T's fields and
-// by extra tags for columns no field stores.
+// by extra tags for columns no field stores. A field tagged pii:"-" is not a column, whatever
+// the mapper says.
 func Model[T any](dataset *Dataset, table string, extra ...Tagged) {
 	dataset.tables = append(dataset.tables, declaration{name: table, model: reflect.TypeFor[T](), tags: extra})
 }
@@ -139,7 +140,11 @@ func (r *Registry) table(dataset string, declared declaration) (Table, []error) 
 			where := fmt.Sprintf("%s %s.%s (%s.%s)", dataset, declared.name, field.Column, typeName, field.Struct.Name)
 
 			tag, isTagged := field.Struct.Tag.Lookup(key)
-			if !isTagged {
+
+			switch {
+			case tag == "-":
+				continue
+			case !isTagged:
 				problems = append(problems, fmt.Errorf("%s: a column with no %s tag", where, key))
 
 				continue
@@ -172,7 +177,7 @@ func (r *Registry) table(dataset string, declared declaration) (Table, []error) 
 
 // SnakeCase is a [Mapper] that stores each exported field in a column named in snake
 // case: OrgID in org_id, and HTTPServer in http_server. It looks through embedded
-// structs, and skips a field tagged pii:"-".
+// structs.
 func SnakeCase(model reflect.Type) ([]Field, error) {
 	if model.Kind() != reflect.Struct {
 		return nil, fmt.Errorf("%s is not a struct", model)
@@ -182,7 +187,7 @@ func SnakeCase(model reflect.Type) ([]Field, error) {
 
 	for _, field := range reflect.VisibleFields(model) {
 		switch {
-		case !field.IsExported() || field.Tag.Get(key) == "-":
+		case !field.IsExported():
 			continue
 		case field.Anonymous && isStruct(field.Type):
 			continue // its fields are visible on their own
