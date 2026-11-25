@@ -19,7 +19,7 @@ guidance = "Share what both dialects need through the root package."
 
 [contracts.database-in-postgres]
 type = "protected"
-name = "Only the postgres package opens a database"
+name = "Only the postgres package and the CLI open a database"
 modules = ["go:database/sql"]
-allowed_importers = ["postgres", "pkg:github.com/feds01/umbra/integration"]
+allowed_importers = ["postgres", "pkg:github.com/feds01/umbra/cmd/umbra", "pkg:github.com/feds01/umbra/integration"]
 guidance = "Read what a database holds in the postgres package, and pass the library its result."
