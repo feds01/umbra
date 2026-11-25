@@ -30,7 +30,7 @@ func policy() umbra.Policy {
 
 // businessDataOnlyOnAccounts keeps allow=business_data to the accounts table, which holds
 // companies, not people.
-func businessDataOnlyOnAccounts(dataset string, table umbra.Table) error {
+func businessDataOnlyOnAccounts(_ string, table umbra.Table) error {
 	for _, column := range table.Columns {
 		allow, isAllow := column.Class.(umbra.Allow)
 		if isAllow && allow.Basis == "business_data" && table.Name != "accounts" {

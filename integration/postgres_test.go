@@ -19,10 +19,9 @@ import (
 	"testing"
 	"time"
 
-	_ "github.com/lib/pq"
-
 	"github.com/feds01/umbra"
 	"github.com/feds01/umbra/postgres"
+	_ "github.com/lib/pq"
 )
 
 func TestReadSchemaSeesEveryRelationAndResolvesDomains(t *testing.T) {
