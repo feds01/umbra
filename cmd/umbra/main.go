@@ -24,6 +24,7 @@ var version = "dev"
 
 const usage = `usage: umbra <command> [flags]
 
+  check            check the catalog, and the database it describes
   views postgres   print the SQL of the masked PostgreSQL views
   version          print the version
 
@@ -80,6 +81,8 @@ func dispatch(args []string, stdout, stderr io.Writer) error {
 	}
 
 	switch command, rest := args[0], args[1:]; command {
+	case "check":
+		return check(rest, stdout, stderr)
 	case "views":
 		return views(rest, stdout, stderr)
 	case "version":

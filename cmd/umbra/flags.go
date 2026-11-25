@@ -49,6 +49,16 @@ func (f *flagSet) names() ([]string, error) {
 	return f.Args(), nil
 }
 
+// none is for a command that takes no arguments after its flags: one that was meant as a
+// flag's value would otherwise be ignored.
+func (f *flagSet) none() error {
+	if f.NArg() > 0 {
+		return f.usageError("unexpected argument %q: this command takes only flags", f.Arg(0))
+	}
+
+	return nil
+}
+
 func (f *flagSet) usageError(format string, arguments ...any) error {
 	fmt.Fprintf(f.stderr, "umbra: "+format+"\n", arguments...)
 
