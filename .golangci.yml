@@ -21,6 +21,9 @@ linters:
     errcheck:
       exclude-functions:
         - (*database/sql.Rows).Close # rows.Err reports what Close would
+        - fmt.Fprint # a command has nowhere to report a failed write to its own output
+        - fmt.Fprintf
+        - fmt.Fprintln
     misspell:
       locale: UK
       ignore-rules:
