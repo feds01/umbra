@@ -128,3 +128,14 @@ jobs:
         uses: feds01/zenith@82574cffe69c5d931b4e82fc7473982d7c6d9044 # v0.8.1
         with:
           upload-sarif: false
+
+  # The command is the one module with dependencies of its own.
+  vulnerabilities:
+    name: Vulnerabilities
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check the command's dependencies
+        uses: golang/govulncheck-action@032d45514ae346b1db93c04b0c90b841c370344f # v1.1.0
+        with:
+          work-dir: cmd/umbra
+          cache-dependency-path: cmd/umbra/go.sum
