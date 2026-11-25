@@ -1,0 +1,97 @@
+/*
+ * Diagrams: SVGs that pages inline with `{{#include}}`, inside a
+ * `<figure class="diagram">`, so that their colours follow the book's theme.
+ */
+
+/* The light themes. */
+.light,
+.rust {
+    --dg-surface: color-mix(in srgb, var(--fg) 3%, var(--bg));
+    --dg-border: color-mix(in srgb, var(--fg) 12%, var(--bg));
+    --dg-muted: hsl(230, 12%, 42%);
+    --dg-line: hsl(230, 10%, 58%);
+    --dg-accent: #c4581b;
+}
+
+/* The dark themes. */
+.coal,
+.navy,
+.ayu {
+    --dg-surface: color-mix(in srgb, var(--fg) 5%, var(--bg));
+    --dg-border: color-mix(in srgb, var(--fg) 14%, var(--bg));
+    --dg-muted: hsl(230, 12%, 62%);
+    --dg-line: hsl(230, 10%, 50%);
+    --dg-accent: #f29444;
+}
+
+/* The frame around a diagram, and its caption. */
+.diagram {
+    margin: 1.75em 0;
+    padding: 1.25em 1.25em 1em;
+    border: 1px solid var(--dg-border);
+    border-radius: 12px;
+    background: var(--dg-surface);
+    overflow-x: auto;
+}
+
+/* On a narrow screen, a diagram scrolls rather than shrinking out of legibility. */
+.diagram svg {
+    display: block;
+    width: 100%;
+    min-width: 540px;
+    height: auto;
+    overflow: visible;
+}
+
+.diagram figcaption {
+    margin-top: 0.9em;
+    color: var(--dg-muted);
+    font-size: 0.85em;
+    line-height: 1.5;
+    text-align: center;
+}
+
+/* Text. */
+.diagram text {
+    fill: var(--fg);
+    font-family: "Open Sans", sans-serif;
+    font-size: 12px;
+}
+
+.diagram .mono {
+    font-family: var(--mono-font);
+}
+
+.diagram .title {
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.diagram .small {
+    font-size: 10.5px;
+}
+
+.diagram .muted {
+    fill: var(--dg-muted);
+}
+
+.diagram .accent {
+    fill: var(--dg-accent);
+}
+
+/* A box, and the line from one to the next. */
+.diagram .card {
+    fill: var(--bg);
+    stroke: var(--dg-border);
+    stroke-width: 1.2;
+}
+
+.diagram .edge {
+    fill: none;
+    stroke: var(--dg-line);
+    stroke-width: 1.4;
+}
+
+.diagram .head {
+    fill: var(--dg-line);
+}

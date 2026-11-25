@@ -76,8 +76,9 @@ a model.
 
 ## Documentation
 
-Every step has a runnable example in the [package docs](https://pkg.go.dev/github.com/feds01/umbra).
-The choices behind the API are in [docs/design.md](docs/design.md).
+The [user guide](https://feds01.github.io/umbra/) covers the concepts, the masked views and
+the command line, and ends with the choices behind the API. Every step has a runnable
+example in the [package docs](https://pkg.go.dev/github.com/feds01/umbra).
 
 ## Development
 

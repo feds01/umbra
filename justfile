@@ -320,6 +320,10 @@ publish-formula tap version:
     fi
     git ${header[@]+"${header[@]}"} push
 
+# Serve the user guide in docs, rebuilt on every change; needs mdBook 0.4.40
+book:
+    mdbook serve docs --open
+
 # Remove build artifacts
 clean:
-    rm -rf dist .bin
+    rm -rf dist .bin docs/book

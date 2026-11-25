@@ -1,0 +1,45 @@
+/*
+ * The mark: theme/mark.svg, which the introduction inlines with `{{#include}}`
+ * inside a `<div class="logo">`, coloured by the book's theme rather than by the
+ * reader's system colour scheme. docs/logo/umbra.svg is the file for everything
+ * else.
+ */
+
+/* The light themes. */
+.light,
+.rust {
+    --logo-ember: #c4581b;
+    --logo-body: #191a2c;
+}
+
+/* The dark themes. */
+.coal,
+.navy,
+.ayu {
+    --logo-ember: #f29444;
+    --logo-body: #0b0c14;
+}
+
+.logo {
+    display: flex;
+    justify-content: center;
+    margin: 1.5em 0 0.5em;
+}
+
+.logo svg {
+    width: 128px;
+    height: 128px;
+}
+
+/* The ring of light is ember, and the body that hides the sun is dark. */
+.logo .ink-line {
+    stroke: var(--fg);
+}
+
+.logo .light-ring {
+    fill: var(--logo-ember);
+}
+
+.logo .body {
+    fill: var(--logo-body);
+}
