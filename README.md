@@ -19,7 +19,8 @@ the views unseen.
 go get github.com/feds01/umbra
 ```
 
-Go 1.24 or later. Nothing outside the standard library.
+Go 1.24 or later. Nothing outside the standard library. The `umbra` command, for
+using it without Go, is in [INSTALL.md](INSTALL.md).
 
 ## A quick look
 
@@ -83,7 +84,7 @@ example in the [package docs](https://pkg.go.dev/github.com/feds01/umbra).
 ## Development
 
 `just` lists the commands: `just test`, `just lint`, and `just integration` for the
-tests against PostgreSQL in Docker.
+tests against PostgreSQL in Docker. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 

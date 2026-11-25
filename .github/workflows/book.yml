@@ -6,12 +6,14 @@ on:
     branches: [main]
     paths:
       - "docs/**"
+      - "INSTALL.md"
       - "cmd/umbra/testdata/**"
       - ".github/workflows/book.yml"
   # A PR that changes the book checks that it builds.
   pull_request:
     paths:
       - "docs/**"
+      - "INSTALL.md"
       - "cmd/umbra/testdata/**"
       - ".github/workflows/book.yml"
   workflow_dispatch:
