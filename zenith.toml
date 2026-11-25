@@ -13,8 +13,8 @@ guidance = "Keep the library on the standard library alone: a dependency belongs
 
 [contracts.layers]
 type = "layers"
-name = "The dialects render from the catalog, which they read through the root package"
-layers = ["postgres | bigquery", "*.go"]
+name = "The CLI renders through the dialects, which read the catalog through the root package"
+layers = ["cmd/umbra", "postgres | bigquery", "*.go"]
 guidance = "Share what both dialects need through the root package."
 
 [contracts.database-in-postgres]
