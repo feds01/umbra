@@ -1,0 +1,17 @@
+[book]
+title = "umbra"
+description = "Classify database columns for personal data, and render the masked views that hide it"
+authors = ["Alexander Fedotov"]
+language = "en"
+src = "."
+
+[build]
+build-dir = "book"
+
+[output.html]
+# Colours the diagrams, which pages inline from diagrams/, and the mark at the
+# top of the introduction, by theme.
+additional-css = ["theme/diagrams.css", "theme/logo.css"]
+site-url = "/umbra/"
+git-repository-url = "https://github.com/feds01/umbra"
+edit-url-template = "https://github.com/feds01/umbra/edit/main/docs/{path}"
