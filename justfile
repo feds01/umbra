@@ -74,7 +74,7 @@ fuzz time="30s":
     go test -run='^$' -fuzz=FuzzGrammar -fuzztime={{time}} .
 
 # Rewrite the golden files from the current output; review them with `git diff`
-update-golden:
+update-golden: workspace
     go test ./postgres ./bigquery -update
     cd cmd/umbra && go test ./... -update
 
@@ -128,6 +128,45 @@ check-version version:
     set -euo pipefail
     echo "{{version}}" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$' || { echo "error: '{{version}}' is not a version, like 0.1.0 or 0.1.0-rc.1" >&2; exit 1; }
 
+# Fail unless every job of ci.yml succeeded on the commit, and no other check failed
+[private]
+ci-passed sha:
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    command -v gh >/dev/null || { echo "error: gh not found, install it with 'brew install gh'" >&2; exit 1; }
+
+    # The jobs of ci.yml, by name. A commit whose checks were all skipped has none of them.
+    required=(
+        "Lint"
+        "Architecture"
+        "Vulnerabilities"
+        "Fuzz the tag grammar"
+        "Integration (PostgreSQL)"
+        "Release build"
+        "Test (ubuntu-latest, Go stable)"
+        "Test (macos-latest, Go stable)"
+        "Test (windows-latest, Go stable)"
+        "Test (ubuntu-latest, Go 1.24.x)"
+    )
+
+    runs="$(gh api --paginate "repos/{owner}/{repo}/commits/{{sha}}/check-runs" --jq '.check_runs[] | "\(.name)\t\(.conclusion // "pending")"')"
+
+    failed=0
+    for job in "${required[@]}"; do
+        if ! grep -qxF "$job"$'\tsuccess' <<<"$runs"; then
+            echo "error: '$job' hasn't succeeded on {{sha}}" >&2
+            failed=1
+        fi
+    done
+
+    # Any other check, such as one a later workflow adds, may be skipped but not red.
+    if grep -vE $'\t(success|skipped)$' <<<"$runs" >&2; then
+        failed=1
+    fi
+
+    exit "$failed"
+
 # Tag and push a release from main: the library at v<version>, then the command at cmd/umbra/v<version>, e.g. `just release 0.1.0`
 release version: (check-version version)
     #!/usr/bin/env bash
@@ -153,12 +192,7 @@ release version: (check-version version)
 
     # CI has passed on this commit: a version can't be taken back once the Go module
     # proxy has fetched it.
-    command -v gh >/dev/null || fail "gh not found, install it with 'brew install gh'"
-    sha="$(git rev-parse HEAD)"
-    conclusions="$(gh api --paginate "repos/{owner}/{repo}/commits/$sha/check-runs" --jq '.check_runs[] | .conclusion // "pending"')"
-    if [ -z "$conclusions" ] || grep -qvE '^(success|skipped)$' <<<"$conclusions"; then
-        fail "CI hasn't passed on $sha: see 'gh run list --commit $sha'"
-    fi
+    just ci-passed "$(git rev-parse HEAD)" || fail "CI hasn't passed on this commit"
 
     # Neither tag exists yet.
     tag="v{{version}}"
