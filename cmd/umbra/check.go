@@ -43,26 +43,49 @@ func check(args []string, stdout, stderr io.Writer) error {
 
 	fmt.Fprintln(stdout, "the catalog is valid")
 
-	if *address == "" {
-		return nil
-	}
-
 	// 2. Compare the PostgreSQL dataset with the database's schema.
-	section, err := cfg.postgres()
-	if err != nil {
-		return err
+	var problems []error
+
+	if *address != "" {
+		section, err := cfg.postgres()
+		if err != nil {
+			return err
+		}
+
+		schema, err := readPostgresSchema(*address, section.Tables)
+		if err != nil {
+			return err
+		}
+
+		if err := catalog.Check(section.Dataset, schema); err != nil {
+			problems = append(problems, err)
+		} else {
+			fmt.Fprintf(stdout, "%s matches the database\n", section.Dataset)
+		}
 	}
 
-	schema, err := readPostgresSchema(*address, section.Tables)
-	if err != nil {
-		return err
+	// 3. Compare the BigQuery dataset with the schema files.
+	if cfg.BigQuery != nil {
+		section, err := cfg.bigquery()
+		if err != nil {
+			return err
+		}
+
+		schema, err := section.readSchemas(cfg)
+		if err != nil {
+			return err
+		}
+
+		if err := catalog.Check(section.Dataset, schema); err != nil {
+			problems = append(problems, err)
+		} else {
+			fmt.Fprintf(stdout, "%s matches the schema files\n", section.Dataset)
+		}
 	}
 
-	if err := catalog.Check(section.Dataset, schema); err != nil {
-		return problem{err}
+	if len(problems) > 0 {
+		return problem{errors.Join(problems...)}
 	}
-
-	fmt.Fprintf(stdout, "%s matches the database\n", section.Dataset)
 
 	return nil
 }

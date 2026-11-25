@@ -1,0 +1,13 @@
+[
+  {"name": "id", "type": "STRING", "mode": "NULLABLE"},
+  {"name": "name", "type": "STRING", "mode": "NULLABLE"},
+  {
+    "name": "properties",
+    "type": "RECORD",
+    "mode": "NULLABLE",
+    "fields": [
+      {"name": "email", "type": "STRING", "mode": "NULLABLE"},
+      {"name": "page", "type": "STRING", "mode": "NULLABLE"}
+    ]
+  }
+]

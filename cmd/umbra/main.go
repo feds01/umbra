@@ -26,6 +26,7 @@ const usage = `usage: umbra <command> [flags]
 
   check            check the catalog, and the database it describes
   views postgres   print the SQL of the masked PostgreSQL views
+  views bigquery   print the SQL of the masked BigQuery views
   version          print the version
 
 Every command that reads a catalog reads the nearest umbra.toml, or the one named with
