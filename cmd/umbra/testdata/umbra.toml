@@ -34,3 +34,12 @@ classification = "classification"
 masks."generalise=domain" = { extract = "email" }
 masks."generalise=host" = { extract = "url" }
 masks.pseudonymise = { hmac = { scope = "org_id", key = "SELECT key FROM private.pseudonym_key" } }
+
+[bigquery]
+dataset = "warehouse"
+project = "acme"
+tables = "events"
+views = "masked"
+schemas = "schemas"
+masks."generalise=domain" = { extract = "email" }
+masks."generalise=host" = { extract = "url" }

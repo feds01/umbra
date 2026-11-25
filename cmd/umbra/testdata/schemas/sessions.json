@@ -1,0 +1,5 @@
+[
+  {"name": "id", "type": "STRING", "mode": "NULLABLE"},
+  {"name": "url", "type": "STRING", "mode": "NULLABLE"},
+  {"name": "referrer", "type": "STRING", "mode": "NULLABLE"}
+]

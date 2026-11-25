@@ -12,6 +12,7 @@ import (
 
 	"github.com/BurntSushi/toml"
 	"github.com/feds01/umbra"
+	bq "github.com/feds01/umbra/bigquery"
 	"github.com/feds01/umbra/postgres"
 )
 
@@ -23,6 +24,7 @@ type config struct {
 	Catalog  string          `toml:"catalog"`
 	Policy   policyConfig    `toml:"policy"`
 	Postgres *postgresConfig `toml:"postgres"`
+	BigQuery *bigqueryConfig `toml:"bigquery"`
 
 	dir string
 }
@@ -46,6 +48,15 @@ type postgresConfig struct {
 	Role           string                `toml:"role"`
 	Classification string                `toml:"classification"`
 	Masks          map[string]maskConfig `toml:"masks"`
+}
+
+type bigqueryConfig struct {
+	Dataset string                `toml:"dataset"`
+	Project string                `toml:"project"`
+	Tables  string                `toml:"tables"`
+	Views   string                `toml:"views"`
+	Schemas string                `toml:"schemas"`
+	Masks   map[string]maskConfig `toml:"masks"`
 }
 
 // kinds are the names that umbra.toml gives the kinds of value a masker reads.
@@ -231,4 +242,27 @@ func (c postgresConfig) masks(cfg *config) (map[string]postgres.Expr, error) {
 	}
 
 	return expressions(c.Masks, postgres.Extract, postgres.HMAC)
+}
+
+// bigquery returns the [bigquery] section, or says there is none.
+func (c *config) bigquery() (bigqueryConfig, error) {
+	section := c.BigQuery
+
+	switch {
+	case section == nil:
+		return bigqueryConfig{}, fmt.Errorf("%s has no [bigquery] section", configName)
+	case section.Dataset == "" || section.Project == "" || section.Tables == "" || section.Views == "" || section.Schemas == "":
+		return bigqueryConfig{}, errors.New("[bigquery] needs a dataset, project, tables, views and schemas")
+	}
+
+	return *section, nil
+}
+
+// masks turns each mask into its BigQuery expression, which has no keyed hash.
+func (c bigqueryConfig) masks(cfg *config) (map[string]bq.Expr, error) {
+	if err := cfg.checkMasks(c.Masks); err != nil {
+		return nil, err
+	}
+
+	return expressions(c.Masks, bq.Extract, nil)
 }

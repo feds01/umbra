@@ -11,7 +11,12 @@ import (
 )
 
 func TestCheckTheCatalog(t *testing.T) {
-	code, stdout, stderr := execute(t, "check", "--config", exampleConfig)
+	config := project(t, map[string]string{
+		configName:                      "catalog = \"catalog\"\n[policy]\nreasons = [\"person\"]\n",
+		"catalog/postgres/contacts.pii": "id allow\nname deny=person\n",
+	})
+
+	code, stdout, stderr := execute(t, "check", "--config", config)
 
 	if code != 0 || stdout != "the catalog is valid\n" {
 		t.Errorf("got exit code %d, %q and %q, want 0 and the catalog is valid", code, stdout, stderr)
