@@ -49,11 +49,12 @@ func (f *flagSet) names() ([]string, error) {
 	return f.Args(), nil
 }
 
-// none is for a command that takes no arguments after its flags: one that was meant as a
-// flag's value would otherwise be ignored.
+// none is for a command that takes no arguments after its flags. One that was meant as a
+// flag's value, such as a database URL, would otherwise be ignored. The argument isn't
+// named, as it may hold a password.
 func (f *flagSet) none() error {
 	if f.NArg() > 0 {
-		return f.usageError("unexpected argument %q: this command takes only flags", f.Arg(0))
+		return f.usageError("this command takes only flags, did you mean to give the argument to a flag?")
 	}
 
 	return nil

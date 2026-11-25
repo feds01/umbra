@@ -43,11 +43,16 @@ func TestCheckReportsEveryBadCatalogFile(t *testing.T) {
 }
 
 func TestCheckTakesOnlyFlags(t *testing.T) {
-	for _, argument := range []string{"postgres://localhost/app", "extra"} {
+	for _, argument := range []string{"postgres://umbra:s3cretpw@localhost/app", "extra"} {
 		code, stdout, stderr := execute(t, "check", "--config", exampleConfig, argument)
 
 		if code != 2 || stdout != "" || !strings.Contains(stderr, "takes only flags") {
 			t.Errorf("%q: got exit code %d, %q and %q, want 2, nothing and the usage error", argument, code, stdout, stderr)
+		}
+
+		// The argument is usually a URL that was meant for --postgres.
+		if strings.Contains(stdout+stderr, "s3cretpw") || strings.Contains(stderr, argument) {
+			t.Errorf("%q: the usage error shows the argument: %q", argument, stderr)
 		}
 	}
 }
