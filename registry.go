@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"slices"
 	"strings"
 	"unicode"
 )
@@ -38,7 +39,8 @@ type Field struct {
 	Struct reflect.StructField
 }
 
-// Tagged is a column's tag given in code, for a column no struct field stores.
+// Tagged is a column's tag given in code, for a column no struct field stores, or one
+// whose field can't carry a tag, such as a field of an embedded type from another package.
 type Tagged struct {
 	Column, Tag string
 }
@@ -73,8 +75,9 @@ func (r *Registry) Dataset(name string) *Dataset {
 }
 
 // Model registers the table T is stored in, classified by the pii tags on T's fields and
-// by extra tags for columns no field stores. A field tagged pii:"-" is not a column, whatever
-// the mapper says.
+// by extra tags. An extra tag classifies a column no field stores, or the column of a field
+// with no tag, in that field's place. A field tagged pii:"-" is not a column, whatever the
+// mapper says.
 func Model[T any](dataset *Dataset, table string, extra ...Tagged) {
 	dataset.tables = append(dataset.tables, declaration{name: table, model: reflect.TypeFor[T](), tags: extra})
 }
@@ -114,11 +117,13 @@ func (r *Registry) Catalog() (*Catalog, error) {
 }
 
 // table classifies the columns of a declared table, from its model's fields, then its
-// tags given in code.
+// tags given in code that no field took.
 func (r *Registry) table(dataset string, declared declaration) (Table, []error) {
 	table := Table{Name: declared.name}
 
 	var problems []error
+
+	taken := make([]bool, len(declared.tags))
 
 	if declared.model != nil {
 		model := declared.model
@@ -145,9 +150,15 @@ func (r *Registry) table(dataset string, declared declaration) (Table, []error) 
 			case tag == "-":
 				continue
 			case !isTagged:
-				problems = append(problems, fmt.Errorf("%s: a column with no %s tag", where, key))
+				index := slices.IndexFunc(declared.tags, func(tagged Tagged) bool { return tagged.Column == field.Column })
+				if index < 0 {
+					problems = append(problems, fmt.Errorf("%s: a column with no %s tag", where, key))
 
-				continue
+					continue
+				}
+
+				taken[index] = true
+				tag = declared.tags[index].Tag
 			}
 
 			class, err := ParseTag(tag, r.policy)
@@ -161,7 +172,11 @@ func (r *Registry) table(dataset string, declared declaration) (Table, []error) 
 		}
 	}
 
-	for _, tagged := range declared.tags {
+	for index, tagged := range declared.tags {
+		if taken[index] {
+			continue
+		}
+
 		class, err := ParseTag(tagged.Tag, r.policy)
 		if err != nil {
 			problems = append(problems, fmt.Errorf("%s %s.%s: %w", dataset, declared.name, tagged.Column, err))
