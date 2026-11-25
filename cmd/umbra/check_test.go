@@ -8,11 +8,13 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/feds01/umbra/cmd/umbra/internal/cli"
 )
 
 func TestCheckTheCatalog(t *testing.T) {
 	config := project(t, map[string]string{
-		configName:                      "catalog = \"catalog\"\n[policy]\nreasons = [\"person\"]\n",
+		cli.ConfigName:                  "catalog = \"catalog\"\n[policy]\nreasons = [\"person\"]\n",
 		"catalog/postgres/contacts.pii": "id allow\nname deny=person\n",
 	})
 
@@ -25,7 +27,7 @@ func TestCheckTheCatalog(t *testing.T) {
 
 func TestCheckReportsEveryBadCatalogFile(t *testing.T) {
 	config := project(t, map[string]string{
-		configName:                      "catalog = \"catalog\"\n[policy]\nreasons = [\"person\"]\n",
+		cli.ConfigName:                  "catalog = \"catalog\"\n[policy]\nreasons = [\"person\"]\n",
 		"catalog/postgres/contacts.pii": "id allow\nname deny=nobody\nemail\n",
 	})
 
@@ -59,7 +61,7 @@ func TestCheckTakesOnlyFlags(t *testing.T) {
 
 func TestCheckNeedsAPostgresSectionForADatabase(t *testing.T) {
 	config := project(t, map[string]string{
-		configName:                      "catalog = \"catalog\"\n[policy]\nreasons = [\"person\"]\n",
+		cli.ConfigName:                  "catalog = \"catalog\"\n[policy]\nreasons = [\"person\"]\n",
 		"catalog/postgres/contacts.pii": "id allow\n",
 	})
 

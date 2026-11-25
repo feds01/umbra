@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/feds01/umbra"
+	"github.com/feds01/umbra/cmd/umbra/internal/cli"
 )
 
 // maskerA is a policy that declares the masker "a", for the tests of its mask.
@@ -42,7 +42,7 @@ func TestAConfigThatCantBeUsedExitsWithTwo(t *testing.T) {
 			args := test.args
 
 			if test.config != "" {
-				args = []string{"views", "postgres", "--config", project(t, map[string]string{configName: test.config})}
+				args = []string{"views", "postgres", "--config", project(t, map[string]string{cli.ConfigName: test.config})}
 			}
 
 			code, stdout, stderr := execute(t, args...)
@@ -56,7 +56,7 @@ func TestAConfigThatCantBeUsedExitsWithTwo(t *testing.T) {
 
 func TestEveryBadCatalogFileIsReportedWithExitCodeOne(t *testing.T) {
 	config := project(t, map[string]string{
-		configName:                      "catalog = \"catalog\"\n[policy]\nreasons = [\"person\"]\n" + postgresSection,
+		cli.ConfigName:                  "catalog = \"catalog\"\n[policy]\nreasons = [\"person\"]\n" + postgresSection,
 		"catalog/postgres/contacts.pii": "id allow\nname deny=nobody\nemail\n",
 	})
 
@@ -77,33 +77,12 @@ func TestACatalogCanBeNamedByAnAbsolutePath(t *testing.T) {
 	catalog := filepath.Dir(project(t, map[string]string{"postgres/contacts.pii": "id allow\n"}))
 
 	config := project(t, map[string]string{
-		configName: "catalog = " + `"` + filepath.ToSlash(catalog) + `"` + "\n[policy]\nreasons = [\"person\"]\n[postgres]\ndataset = \"postgres\"\nviews = \"v\"\n",
+		cli.ConfigName: "catalog = " + `"` + filepath.ToSlash(catalog) + `"` + "\n[policy]\nreasons = [\"person\"]\n[postgres]\ndataset = \"postgres\"\nviews = \"v\"\n",
 	})
 
 	code, stdout, stderr := execute(t, "views", "postgres", "--config", config)
 
 	if code != 0 || !strings.Contains(stdout, `CREATE VIEW v."contacts"`) {
 		t.Errorf("got exit code %d, %q and %q", code, stdout, stderr)
-	}
-}
-
-func TestAMaskerReadsEveryKindItNames(t *testing.T) {
-	var policy policyConfig
-
-	policy.Maskers = append(policy.Maskers, struct {
-		Term   string   `toml:"term"`
-		Suffix string   `toml:"suffix"`
-		Kinds  []string `toml:"kinds"`
-		Reason string   `toml:"reason"`
-		Reads  []string `toml:"reads"`
-	}{Term: "pseudonymise", Suffix: "pseudonym", Kinds: []string{"text", "uuid"}})
-
-	got, err := policy.policy()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if want := umbra.Text | umbra.UUID; got.Maskers[0].Kinds != want {
-		t.Errorf("got kinds %v, want %v", got.Maskers[0].Kinds, want)
 	}
 }

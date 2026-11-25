@@ -17,6 +17,8 @@ import (
 	"os"
 	"runtime/debug"
 	"strings"
+
+	"github.com/feds01/umbra/cmd/umbra/internal/cli"
 )
 
 // version is set at release time with -ldflags "-X main.version=…".
@@ -33,14 +35,6 @@ Every command that reads a catalog reads the nearest umbra.toml, or the one name
 --config.
 `
 
-// problem is something wrong with the catalog, as opposed to a command that couldn't run.
-type problem struct{ error }
-
-func (p problem) Unwrap() error { return p.error }
-
-// errUsage marks a command line that was already reported.
-var errUsage = errors.New("usage")
-
 func main() {
 	os.Exit(run(os.Args[1:], os.Stdout, os.Stderr))
 }
@@ -56,12 +50,12 @@ func run(args []string, stdout, stderr io.Writer) int {
 		err = fmt.Errorf("write the output: %w", out.err)
 	}
 
-	var found problem
+	var found cli.Problem
 
 	switch {
 	case err == nil, errors.Is(err, flag.ErrHelp):
 		return 0
-	case errors.Is(err, errUsage):
+	case errors.Is(err, cli.ErrUsage):
 		return 2
 	case errors.As(err, &found):
 		fmt.Fprintln(stderr, err)
@@ -78,7 +72,7 @@ func dispatch(args []string, stdout, stderr io.Writer) error {
 	if len(args) == 0 {
 		fmt.Fprint(stderr, usage)
 
-		return errUsage
+		return cli.ErrUsage
 	}
 
 	switch command, rest := args[0], args[1:]; command {

@@ -11,15 +11,26 @@ from = [{ path = "pkg:github.com/feds01/umbra", except = ["cmd", "integration"] 
 to = ["gomod:*"]
 guidance = "Keep the library on the standard library alone: a dependency belongs in cmd/umbra."
 
+# From the top: the command, the targets of the command, what they share, the targets of
+# the library, and the root package. A layer may import the ones below it. The targets of a
+# layer never import each other, and the root knows no target. zenith sees the library from
+# the command as one module, so architecture_test.go holds a target of the command to its
+# own library package.
 [contracts.layers]
 type = "layers"
-name = "The CLI renders through the dialects, which read the catalog through the root package"
-layers = ["cmd/umbra", "postgres | bigquery", "*.go"]
-guidance = "Share what both dialects need through the root package."
+name = "Each target stands alone, in the command and in the library"
+layers = [
+  "cmd/umbra/*.go",
+  "cmd/umbra/internal/postgres | cmd/umbra/internal/bigquery",
+  "cmd/umbra/internal/cli",
+  "postgres | bigquery",
+  "*.go",
+]
+guidance = "Share what both targets need through cmd/umbra/internal/cli, or through the root package."
 
 [contracts.database-in-postgres]
 type = "protected"
-name = "Only the postgres package and the CLI open a database"
+name = "Only the postgres packages open a database"
 modules = ["go:database/sql"]
-allowed_importers = ["postgres", "pkg:github.com/feds01/umbra/cmd/umbra", "pkg:github.com/feds01/umbra/integration"]
+allowed_importers = ["postgres", "cmd/umbra/internal/postgres", "cmd/umbra/check_test.go", "pkg:github.com/feds01/umbra/integration"]
 guidance = "Read what a database holds in the postgres package, and pass the library its result."

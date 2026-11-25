@@ -4,13 +4,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"strings"
 
-	bq "github.com/feds01/umbra/bigquery"
-	"github.com/feds01/umbra/postgres"
+	"github.com/feds01/umbra/cmd/umbra/internal/cli"
 )
 
-// views dispatches to the dialect.
+// views dispatches to the target.
 func views(args []string, stdout, stderr io.Writer) error {
 	if len(args) == 0 {
 		return errors.New("views needs a dialect, postgres or bigquery")
@@ -27,22 +25,21 @@ func views(args []string, stdout, stderr io.Writer) error {
 }
 
 // viewsPostgres prints the views of the named tables, or of every table of the dataset
-// and then the classification view when none is named. It prints nothing unless it can
-// render all of it.
+// and then the classification view when none is named.
 func viewsPostgres(args []string, stdout, stderr io.Writer) error {
-	command := newFlagSet("views postgres [flags] [table...]", stderr)
+	command := cli.NewFlagSet("views postgres [flags] [table...]", stderr)
 	replace := command.Bool("replace", false, "drop each view before creating it, for a migration that changes one")
 
-	if err := command.parse(args); err != nil {
+	if err := command.Read(args); err != nil {
 		return err
 	}
 
-	tables, err := command.names()
+	tables, err := command.Tables()
 	if err != nil {
 		return err
 	}
 
-	cfg, err := readConfig(command.config)
+	cfg, err := readConfig(command.Config)
 	if err != nil {
 		return err
 	}
@@ -52,57 +49,30 @@ func viewsPostgres(args []string, stdout, stderr io.Writer) error {
 		return err
 	}
 
-	masks, err := section.masks(cfg)
+	sql, err := section.SQL(&cfg.Project, *replace, tables)
 	if err != nil {
 		return err
 	}
 
-	catalog, err := cfg.catalog()
-	if err != nil {
-		return err
-	}
-
-	renderer := postgres.Views{Schema: section.Views, Source: section.Tables, Role: section.Role, Masks: masks, Replace: *replace}
-
-	var out strings.Builder
-
-	sql, err := renderer.SQL(catalog, section.Dataset, tables...)
-	if err != nil {
-		return problem{err}
-	}
-
-	out.WriteString(sql)
-
-	if len(tables) == 0 && section.Classification != "" {
-		classification, err := renderer.ClassificationSQL(catalog, section.Dataset, section.Classification)
-		if err != nil {
-			return problem{err}
-		}
-
-		out.WriteString("\n" + classification)
-	}
-
-	fmt.Fprint(stdout, out.String())
+	fmt.Fprint(stdout, sql)
 
 	return nil
 }
 
-// viewsBigQuery prints the view of each named table, or of every table of the dataset,
-// over the schema file that `bq show --schema` wrote for it. It prints nothing unless it
-// can render all of them.
+// viewsBigQuery prints the view of each named table, or of every table of the dataset.
 func viewsBigQuery(args []string, stdout, stderr io.Writer) error {
-	command := newFlagSet("views bigquery [flags] [table...]", stderr)
+	command := cli.NewFlagSet("views bigquery [flags] [table...]", stderr)
 
-	if err := command.parse(args); err != nil {
+	if err := command.Read(args); err != nil {
 		return err
 	}
 
-	tables, err := command.names()
+	tables, err := command.Tables()
 	if err != nil {
 		return err
 	}
 
-	cfg, err := readConfig(command.config)
+	cfg, err := readConfig(command.Config)
 	if err != nil {
 		return err
 	}
@@ -112,46 +82,12 @@ func viewsBigQuery(args []string, stdout, stderr io.Writer) error {
 		return err
 	}
 
-	masks, err := section.masks(cfg)
+	sql, err := section.SQL(&cfg.Project, tables)
 	if err != nil {
 		return err
 	}
 
-	catalog, err := cfg.catalog()
-	if err != nil {
-		return err
-	}
-
-	if len(tables) == 0 {
-		for table := range catalog.Tables(section.Dataset) {
-			tables = append(tables, table.Name)
-		}
-	}
-
-	renderer := bq.Views{Project: section.Project, Dataset: section.Views, Masks: masks}
-
-	rendered := make([]string, len(tables))
-
-	for index, name := range tables {
-		table, isFound := catalog.Table(section.Dataset, name)
-		if !isFound {
-			return problem{fmt.Errorf("%s %s: not in the catalog", section.Dataset, name)}
-		}
-
-		fields, err := section.readSchema(cfg, name)
-		if err != nil {
-			return err
-		}
-
-		view, err := renderer.View(table, bq.Source{Dataset: section.Tables, Table: name}, fields)
-		if err != nil {
-			return problem{err}
-		}
-
-		rendered[index] = view.SQL + ";\n"
-	}
-
-	fmt.Fprint(stdout, strings.Join(rendered, "\n"))
+	fmt.Fprint(stdout, sql)
 
 	return nil
 }

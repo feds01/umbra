@@ -5,6 +5,8 @@ import (
 	"testing"
 
 	"github.com/feds01/umbra/internal/golden"
+
+	"github.com/feds01/umbra/cmd/umbra/internal/cli"
 )
 
 func TestViewsPostgres(t *testing.T) {
@@ -48,7 +50,7 @@ func TestNothingIsPrintedForATableThatIsntInTheCatalog(t *testing.T) {
 
 func TestTheSourceSchemaDefaultsToPublic(t *testing.T) {
 	config := project(t, map[string]string{
-		configName:                      "catalog = \"catalog\"\n[policy]\nreasons = [\"person\"]\n[postgres]\ndataset = \"postgres\"\nviews = \"masked\"\n",
+		cli.ConfigName:                  "catalog = \"catalog\"\n[policy]\nreasons = [\"person\"]\n[postgres]\ndataset = \"postgres\"\nviews = \"masked\"\n",
 		"catalog/postgres/contacts.pii": "id allow\nname deny=person\n",
 	})
 
@@ -61,12 +63,12 @@ func TestTheSourceSchemaDefaultsToPublic(t *testing.T) {
 
 func TestTheNearestConfigIsFound(t *testing.T) {
 	config := project(t, map[string]string{
-		configName:                      "catalog = \"catalog\"\n[policy]\nreasons = [\"person\"]\n[postgres]\ndataset = \"postgres\"\nviews = \"masked\"\n",
+		cli.ConfigName:                  "catalog = \"catalog\"\n[policy]\nreasons = [\"person\"]\n[postgres]\ndataset = \"postgres\"\nviews = \"masked\"\n",
 		"catalog/postgres/contacts.pii": "id allow\nname deny=person\n",
 		"deeper/.keep":                  "",
 	})
 
-	t.Chdir(config[:len(config)-len(configName)] + "deeper")
+	t.Chdir(config[:len(config)-len(cli.ConfigName)] + "deeper")
 
 	code, stdout, stderr := execute(t, "views", "postgres")
 
