@@ -17,8 +17,29 @@ setup:
     @command -v pre-commit >/dev/null || { echo "pre-commit not found, install it with 'brew install pre-commit' or 'pipx install pre-commit'"; exit 1; }
     pre-commit install
 
+# Let the modules build against each other's checkout. go.work stays out of git, as a
+# tagged module can't depend on a directory, and is rewritten for the modules git tracks.
+[private]
+workspace:
+    @rm -f go.work
+    @go work init {{modules}}
+
+# Install the umbra command from this checkout into GOBIN
+install: workspace
+    cd cmd/umbra && go install .
+
+# Remove the installed umbra command
+uninstall:
+    rm -f "$(go env GOBIN)/umbra" "$(go env GOPATH)/bin/umbra"
+
+# Build the command from this checkout and run it in the current directory, e.g. `just run version`
+[no-cd]
+run *args: workspace
+    GOWORK="{{justfile_directory()}}/go.work" go build -o "{{justfile_directory()}}/.bin/umbra" github.com/feds01/umbra/cmd/umbra
+    "{{justfile_directory()}}/.bin/umbra" "$@"
+
 # Build every module
-build:
+build: workspace
     #!/usr/bin/env sh
     set -eu
     for module in {{modules}}; do
@@ -26,7 +47,7 @@ build:
     done
 
 # Run all tests, extra args go to `go test`, e.g. `just test -run Check`
-test *args:
+test *args: workspace
     #!/usr/bin/env sh
     set -eu
     for module in {{modules}}; do
@@ -34,7 +55,7 @@ test *args:
     done
 
 # Run the tests against PostgreSQL in Docker, which is removed afterwards
-integration:
+integration: workspace
     #!/usr/bin/env bash
     set -euo pipefail
     container="$(docker run --detach --rm --publish 127.0.0.1::5432 --env POSTGRES_HOST_AUTH_METHOD=trust postgres:17)"
@@ -57,7 +78,7 @@ update-golden:
     go test ./postgres ./bigquery -update
 
 # Run golangci-lint, formatters included
-golangci:
+golangci: workspace
     #!/usr/bin/env sh
     set -eu
     for module in {{modules}}; do
@@ -65,7 +86,7 @@ golangci:
     done
 
 # Format all code
-fmt:
+fmt: workspace
     #!/usr/bin/env sh
     set -eu
     for module in {{modules}}; do
