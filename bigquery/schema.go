@@ -1,10 +1,47 @@
 package bigquery
 
 import (
+	"encoding/json"
 	"strings"
 
 	"github.com/feds01/umbra"
 )
+
+// jsonField is a field as `bq show --schema --format=json` writes it.
+type jsonField struct {
+	Name   string      `json:"name"`
+	Type   string      `json:"type"`
+	Mode   string      `json:"mode"`
+	Fields []jsonField `json:"fields"`
+}
+
+// ParseSchema reads the JSON that `bq show --schema --format=json` prints for a table: its
+// fields, each with a name, a type, a mode that is REPEATED for a repeated field, and for
+// a record the fields it holds.
+func ParseSchema(data []byte) ([]Field, error) {
+	var fields []jsonField
+
+	if err := json.Unmarshal(data, &fields); err != nil {
+		return nil, err
+	}
+
+	return fieldsOf(fields), nil
+}
+
+func fieldsOf(fields []jsonField) []Field {
+	converted := make([]Field, len(fields))
+
+	for index, field := range fields {
+		converted[index] = Field{
+			Name:     field.Name,
+			Type:     field.Type,
+			Repeated: strings.EqualFold(field.Mode, "REPEATED"),
+			Fields:   fieldsOf(field.Fields),
+		}
+	}
+
+	return converted
+}
 
 // Flatten lists the leaves of a schema, the fields that aren't records, by dotted path,
 // such as properties.email, with their types, for [umbra.Catalog.Check].
