@@ -8,6 +8,8 @@ import (
 	"runtime/debug"
 	"strings"
 	"testing"
+
+	"github.com/feds01/umbra/cmd/umbra/internal/cli"
 )
 
 // exampleConfig is the project in testdata.
@@ -134,5 +136,5 @@ func project(t *testing.T, files map[string]string) string {
 		}
 	}
 
-	return filepath.Join(dir, configName)
+	return filepath.Join(dir, cli.ConfigName)
 }

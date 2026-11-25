@@ -1,4 +1,4 @@
-package main
+package cli
 
 import (
 	"errors"
@@ -9,14 +9,15 @@ import (
 	"github.com/feds01/umbra"
 )
 
-// maskConfig is how a masker's value is computed: exactly one of its keys is set.
-type maskConfig struct {
-	Extract string      `toml:"extract"`
-	Pattern string      `toml:"pattern"`
-	HMAC    *hmacConfig `toml:"hmac"`
+// Mask is how a masker's value is computed: exactly one of its keys is set.
+type Mask struct {
+	Extract string `toml:"extract"`
+	Pattern string `toml:"pattern"`
+	HMAC    *HMAC  `toml:"hmac"`
 }
 
-type hmacConfig struct {
+// HMAC is a keyed pseudonym: the column that keys it, and the SQL that yields the key.
+type HMAC struct {
 	Scope string `toml:"scope"`
 	Key   string `toml:"key"`
 }
@@ -27,10 +28,10 @@ var extracts = map[string]string{
 	"url":   umbra.URLPattern,
 }
 
-// expressions turns each mask into a dialect's expression. hmac is nil for a dialect that
+// Expressions turns each mask into a target's expression. hmac is nil for a target that
 // has no keyed hash.
-func expressions[Expr any](
-	masks map[string]maskConfig,
+func Expressions[Expr any](
+	masks map[string]Mask,
 	extract func(pattern string) Expr,
 	hmac func(scope, key string) Expr,
 ) (map[string]Expr, error) {
@@ -49,7 +50,7 @@ func expressions[Expr any](
 }
 
 func expressionOf[Expr any](
-	mask maskConfig,
+	mask Mask,
 	extract func(pattern string) Expr,
 	hmac func(scope, key string) Expr,
 ) (Expr, error) {

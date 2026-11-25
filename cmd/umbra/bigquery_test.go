@@ -5,6 +5,8 @@ import (
 	"testing"
 
 	"github.com/feds01/umbra/internal/golden"
+
+	"github.com/feds01/umbra/cmd/umbra/internal/cli"
 )
 
 // bigquerySection is a [bigquery] section for a catalog of the one table, events.
@@ -14,7 +16,7 @@ const bigquerySection = "[bigquery]\ndataset = \"warehouse\"\nproject = \"acme\"
 func warehouse(t *testing.T, schema string, files map[string]string) string {
 	t.Helper()
 
-	files[configName] = "catalog = \"catalog\"\n[policy]\nreasons = [\"person\"]\n" + bigquerySection
+	files[cli.ConfigName] = "catalog = \"catalog\"\n[policy]\nreasons = [\"person\"]\n" + bigquerySection
 	files["catalog/warehouse/events.pii"] = "id allow\nname deny=person\n"
 
 	if schema != "" {
@@ -45,7 +47,7 @@ func TestViewsBigQueryOfOneTable(t *testing.T) {
 func TestViewsBigQueryPrintsNothingUnlessItRendersEveryTable(t *testing.T) {
 	// events has its schema file, and sessions, which sorts after it, doesn't.
 	config := project(t, map[string]string{
-		configName:                       "catalog = \"catalog\"\n[policy]\nreasons = [\"person\"]\n" + bigquerySection,
+		cli.ConfigName:                   "catalog = \"catalog\"\n[policy]\nreasons = [\"person\"]\n" + bigquerySection,
 		"catalog/warehouse/events.pii":   "id allow\n",
 		"catalog/warehouse/sessions.pii": "id allow\n",
 		"schemas/events.json":            `[{"name": "id", "type": "STRING"}]`,
@@ -100,7 +102,7 @@ func TestBigQueryNeedsItsSchemaFiles(t *testing.T) {
 
 func TestABigQuerySectionNeedsSchemas(t *testing.T) {
 	config := project(t, map[string]string{
-		configName:                     "catalog = \"catalog\"\n[policy]\nreasons = [\"person\"]\n[bigquery]\ndataset = \"warehouse\"\nproject = \"acme\"\ntables = \"events\"\nviews = \"masked\"\n",
+		cli.ConfigName:                 "catalog = \"catalog\"\n[policy]\nreasons = [\"person\"]\n[bigquery]\ndataset = \"warehouse\"\nproject = \"acme\"\ntables = \"events\"\nviews = \"masked\"\n",
 		"catalog/warehouse/events.pii": "id allow\n",
 		"stray.json":                   "[]",
 	})
@@ -124,7 +126,7 @@ func TestCheckComparesBigQueryWithItsSchemaFiles(t *testing.T) {
 
 func TestCheckReportsEveryBigQueryProblem(t *testing.T) {
 	config := project(t, map[string]string{
-		configName:                     "catalog = \"catalog\"\n[policy]\nreasons = [\"person\"]\n" + bigquerySection,
+		cli.ConfigName:                 "catalog = \"catalog\"\n[policy]\nreasons = [\"person\"]\n" + bigquerySection,
 		"catalog/warehouse/events.pii": "id allow\nname deny=person\ngone deny=person\n",
 		"schemas/events.json":          `[{"name": "id", "type": "STRING"}, {"name": "name", "type": "STRING"}, {"name": "phone", "type": "STRING"}]`,
 	})
@@ -144,7 +146,7 @@ func TestCheckReportsEveryBigQueryProblem(t *testing.T) {
 
 func TestABigQueryMaskCantBeAnHMAC(t *testing.T) {
 	config := project(t, map[string]string{
-		configName: "catalog = \".\"\n[policy]\nreasons = [\"person\"]\n[[policy.maskers]]\nterm = \"a\"\nsuffix = \"a\"\nkinds = [\"text\"]\n" +
+		cli.ConfigName: "catalog = \".\"\n[policy]\nreasons = [\"person\"]\n[[policy.maskers]]\nterm = \"a\"\nsuffix = \"a\"\nkinds = [\"text\"]\n" +
 			bigquerySection + "masks.a = { hmac = { scope = \"s\", key = \"k\" } }\n",
 	})
 
@@ -152,18 +154,5 @@ func TestABigQueryMaskCantBeAnHMAC(t *testing.T) {
 
 	if code != 2 || !strings.Contains(stderr, "this dialect has no hmac") {
 		t.Errorf("got exit code %d and %q, want 2 and no hmac", code, stderr)
-	}
-}
-
-func TestARepeatedFieldIsRepeatedInAnyCase(t *testing.T) {
-	for _, mode := range []string{"REPEATED", "repeated"} {
-		fields, err := parseSchema([]byte(`[{"name": "tags", "type": "STRING", "mode": "` + mode + `"}]`))
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		if !fields[0].Repeated {
-			t.Errorf("mode %q isn't repeated", mode)
-		}
 	}
 }
