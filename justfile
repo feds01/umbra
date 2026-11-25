@@ -76,6 +76,7 @@ fuzz time="30s":
 # Rewrite the golden files from the current output; review them with `git diff`
 update-golden:
     go test ./postgres ./bigquery -update
+    cd cmd/umbra && go test ./... -update
 
 # Run golangci-lint, formatters included
 golangci: workspace

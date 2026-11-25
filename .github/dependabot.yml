@@ -13,6 +13,17 @@ updates:
     commit-message:
       prefix: "build(deps)"
 
+  # The command requires a release of the library, which this bumps once there is one.
+  - package-ecosystem: gomod
+    directory: /cmd/umbra
+    schedule:
+      interval: monthly
+    groups:
+      go-dependencies:
+        patterns: ["*"]
+    commit-message:
+      prefix: "build(deps)"
+
   - package-ecosystem: github-actions
     directory: /
     schedule:

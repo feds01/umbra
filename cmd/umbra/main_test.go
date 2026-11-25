@@ -3,10 +3,15 @@ package main
 import (
 	"bytes"
 	"errors"
+	"os"
+	"path/filepath"
 	"runtime/debug"
 	"strings"
 	"testing"
 )
+
+// exampleConfig is the project in testdata.
+const exampleConfig = "testdata/umbra.toml"
 
 // execute runs the command, and returns its exit code and what it printed.
 func execute(t *testing.T, args ...string) (code int, stdout, stderr string) {
@@ -27,6 +32,8 @@ func TestACommandThatCouldNotRunExitsWithTwo(t *testing.T) {
 	}{
 		{"no command", nil, "usage: umbra"},
 		{"an unknown command", []string{"fmt"}, `unknown command "fmt"`},
+		{"views with no dialect", []string{"views"}, "views needs a dialect"},
+		{"an unknown dialect", []string{"views", "mysql"}, `unknown dialect "mysql"`},
 	}
 
 	for _, test := range tests {
@@ -41,6 +48,14 @@ func TestACommandThatCouldNotRunExitsWithTwo(t *testing.T) {
 }
 
 func TestHelpAndVersion(t *testing.T) {
+	for _, args := range [][]string{{"help"}, {"--help"}, {"views", "postgres", "--help"}} {
+		code, _, _ := execute(t, args...)
+
+		if code != 0 {
+			t.Errorf("%v: exit code %d, want 0", args, code)
+		}
+	}
+
 	code, stdout, _ := execute(t, "help")
 
 	if code != 0 || !strings.HasPrefix(stdout, "usage: umbra") {
@@ -99,4 +114,25 @@ func TestOutputThatCouldNotBeWrittenExitsWithTwo(t *testing.T) {
 	if code != 2 || !strings.Contains(errs.String(), "no space left on device") {
 		t.Errorf("got exit code %d and %q, want 2 and the write error", code, errs.String())
 	}
+}
+
+// project writes files into a directory, and returns the path of its umbra.toml.
+func project(t *testing.T, files map[string]string) string {
+	t.Helper()
+
+	dir := t.TempDir()
+
+	for name, content := range files {
+		path := filepath.Join(dir, filepath.FromSlash(name))
+
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatal(err)
+		}
+
+		if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	return filepath.Join(dir, configName)
 }
