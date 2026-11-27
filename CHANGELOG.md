@@ -3,6 +3,14 @@
 What changed for umbra's users in each release. The release workflow uses a
 release's section as its notes on GitHub.
 
+## [0.2.0] - 2026-11-27
+
+[Changes since v0.1.0](https://github.com/feds01/umbra/compare/v0.1.0...v0.2.0)
+
+### Features
+
+- a mapper per dataset, and bigquery.Columns for row structs ([#22](https://github.com/feds01/umbra/pull/22))
+
 ## [0.1.0] - 2026-11-27
 
 ### Features
@@ -23,4 +31,5 @@ release's section as its notes on GitHub.
 - a logo, and a lighter README ([#7](https://github.com/feds01/umbra/pull/7))
 - add a user guide, published to GitHub Pages ([#13](https://github.com/feds01/umbra/pull/13))
 - add CONTRIBUTING, INSTALL and AGENTS.md ([#14](https://github.com/feds01/umbra/pull/14))
+- changelog for 0.1.0 ([#21](https://github.com/feds01/umbra/pull/21))
 
