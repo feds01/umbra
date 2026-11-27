@@ -19,6 +19,7 @@ type Registry struct {
 // A Dataset lists the tables of one place that holds them, such as a database.
 type Dataset struct {
 	name   string
+	mapper Mapper
 	tables []declaration
 }
 
@@ -46,7 +47,8 @@ type Tagged struct {
 }
 
 // NewRegistry returns an empty registry whose tags use the policy's vocabulary.
-// mapper names the columns of each model; nil means [SnakeCase].
+// mapper names the columns of each model; nil means [SnakeCase]. [Dataset.MapWith] gives a
+// dataset a mapper of its own.
 func NewRegistry(policy Policy, mapper Mapper) *Registry {
 	if mapper == nil {
 		mapper = SnakeCase
@@ -72,6 +74,14 @@ func (r *Registry) Dataset(name string) *Dataset {
 	r.datasets = append(r.datasets, dataset)
 
 	return dataset
+}
+
+// MapWith names the columns of the dataset's models with mapper, in place of the registry's,
+// and returns the dataset.
+func (d *Dataset) MapWith(mapper Mapper) *Dataset {
+	d.mapper = mapper
+
+	return d
 }
 
 // Model registers the table T is stored in, classified by the pii tags on T's fields and
@@ -100,7 +110,7 @@ func (r *Registry) Catalog() (*Catalog, error) {
 
 	for _, dataset := range r.datasets {
 		for _, declared := range dataset.tables {
-			table, tableProblems := r.table(dataset.name, declared)
+			table, tableProblems := r.table(dataset, declared)
 			if len(tableProblems) == 0 {
 				tableProblems = catalog.add(r.policy, dataset.name, table)
 			}
@@ -118,8 +128,13 @@ func (r *Registry) Catalog() (*Catalog, error) {
 
 // table classifies the columns of a declared table, from its model's fields, then its
 // tags given in code that no field took.
-func (r *Registry) table(dataset string, declared declaration) (Table, []error) {
+func (r *Registry) table(dataset *Dataset, declared declaration) (Table, []error) {
 	table := Table{Name: declared.name}
+
+	mapper := r.mapper
+	if dataset.mapper != nil {
+		mapper = dataset.mapper
+	}
 
 	var problems []error
 
@@ -136,13 +151,13 @@ func (r *Registry) table(dataset string, declared declaration) (Table, []error) 
 			typeName = model.String()
 		}
 
-		fields, err := r.mapper(model)
+		fields, err := mapper(model)
 		if err != nil {
-			return table, []error{fmt.Errorf("%s %s (%s): %w", dataset, declared.name, typeName, err)}
+			return table, []error{fmt.Errorf("%s %s (%s): %w", dataset.name, declared.name, typeName, err)}
 		}
 
 		for _, field := range fields {
-			where := fmt.Sprintf("%s %s.%s (%s.%s)", dataset, declared.name, field.Column, typeName, field.Struct.Name)
+			where := fmt.Sprintf("%s %s.%s (%s.%s)", dataset.name, declared.name, field.Column, typeName, field.Struct.Name)
 
 			tag, isTagged := field.Struct.Tag.Lookup(key)
 
@@ -179,7 +194,7 @@ func (r *Registry) table(dataset string, declared declaration) (Table, []error) 
 
 		class, err := ParseTag(tagged.Tag, r.policy)
 		if err != nil {
-			problems = append(problems, fmt.Errorf("%s %s.%s: %w", dataset, declared.name, tagged.Column, err))
+			problems = append(problems, fmt.Errorf("%s %s.%s: %w", dataset.name, declared.name, tagged.Column, err))
 
 			continue
 		}

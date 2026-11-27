@@ -18,7 +18,8 @@
   `allow` passes only with a basis.
 - **Reflection, not source parsing.** Go can't list types at runtime, so a registry lists
   them, one line per table. A `Mapper` names each model's columns: `SnakeCase` by
-  default, or your ORM's own parser, so the catalog and the ORM never disagree.
+  default, or your ORM's own parser, so the catalog and the ORM never disagree. Each
+  dataset may have its own, as one registry can hold a database and a warehouse.
 - **Collect errors; don't panic.** `Model` never fails. `Catalog`, `Load` and `Check`
   return every problem in one `errors.Join`, each naming its table, column and field.
 - **Keep the generated files.** Runtime code reads the catalog without importing every

@@ -24,6 +24,25 @@ element:
 {{#include ../cmd/umbra/testdata/views_bigquery.sql}}
 ```
 
+## Row structs
+
+`bigquery.Columns` is a mapper for the structs BigQuery's Go client reads and writes, so
+a table's classes sit on its row struct. It names a column by its `bigquery` tag, and a
+record's leaves by their dotted path, repeated or not:
+
+```go
+type Event struct {
+	ID          string       `bigquery:"id"                   pii:"allow"`
+	Geolocation *Geolocation `bigquery:"geolocation,nullable"` // a record: its fields carry the tags
+	Body        Payload      `bigquery:"body,json"            pii:"deny=json"`
+}
+
+umbra.Model[Event](registry.Dataset("events").MapWith(bigquery.Columns), "events")
+```
+
+A record is a field whose struct names one of its fields with a `bigquery` tag. Any
+other struct, such as `time.Time`, is one column, as is a record with the `json` option.
+
 ## Descriptions
 
 Each view column's description is the class's label, and the view's description lists
