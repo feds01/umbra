@@ -181,6 +181,34 @@ func TestCatalogAsksTheMapperForAModelsColumns(t *testing.T) {
 	}
 }
 
+func TestADatasetMapsWithItsOwnMapper(t *testing.T) {
+	type Contact struct {
+		EmailAddress string `pii:"deny=person"`
+	}
+
+	lowerCase := func(model reflect.Type) ([]umbra.Field, error) {
+		field, _ := model.FieldByName("EmailAddress")
+
+		return []umbra.Field{{Column: "emailaddress", Struct: field}}, nil
+	}
+
+	registry := umbra.NewRegistry(policy(), nil)
+	umbra.Model[Contact](registry.Dataset("postgres"), "contacts")
+	umbra.Model[Contact](registry.Dataset("warehouse").MapWith(lowerCase), "contacts")
+
+	catalog, err := registry.Catalog()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for dataset, want := range map[string]string{"postgres": "email_address", "warehouse": "emailaddress"} {
+		contacts, _ := catalog.Table(dataset, "contacts")
+		if len(contacts.Columns) != 1 || contacts.Columns[0].Name != want {
+			t.Errorf("%s: got %v, want %s", dataset, contacts.Columns, want)
+		}
+	}
+}
+
 func TestCatalogSkipsAFieldTaggedDashWhateverTheMapper(t *testing.T) {
 	type Campaign struct {
 		ID     string `pii:"allow"`

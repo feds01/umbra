@@ -64,7 +64,8 @@ registry.Dataset("postgres").Columns("schema_migrations", // a table with no mod
 - A field with no tag is an error, so a new column can't be forgotten. `pii:"-"`
   skips a field that isn't a column, such as a relation.
 - A **mapper** names each field's column. `umbra.SnakeCase` is the default, and you
-  can pass your ORM's own, so the catalog and the ORM never disagree.
+  can pass your ORM's own, so the catalog and the ORM never disagree. A dataset whose
+  models another library stores takes its own: `registry.Dataset("warehouse").MapWith(bigquery.Columns)`.
 - Embedded structs contribute their fields.
 
 ## Exposures
