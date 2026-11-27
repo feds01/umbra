@@ -122,3 +122,33 @@ func ExampleParseSchema() {
 	// tags STRING true 0
 	// page RECORD false 1
 }
+
+func ExampleColumns() {
+	type Geolocation struct {
+		City    string `bigquery:"city"    pii:"deny=person"`
+		Country string `bigquery:"country" pii:"allow"`
+	}
+
+	type Event struct {
+		ID          string       `bigquery:"id"          pii:"allow"`
+		Geolocation *Geolocation `bigquery:"geolocation"`
+	}
+
+	registry := umbra.NewRegistry(umbra.Policy{Reasons: []umbra.Reason{"person"}}, nil)
+	umbra.Model[Event](registry.Dataset("events").MapWith(bigquery.Columns), "events")
+
+	catalog, err := registry.Catalog()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	events, _ := catalog.Table("events", "events")
+	for _, column := range events.Columns {
+		fmt.Println(column.Name, column.Class)
+	}
+
+	// Output:
+	// id allow
+	// geolocation.city deny=person
+	// geolocation.country allow
+}
